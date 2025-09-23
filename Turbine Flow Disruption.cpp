@@ -67,3 +67,117 @@ int32_t main() {
         }
     }
 }
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+
+vector<int> turbine_operations(int n, int q, vector<int>& initial_flows, vector<vector<int>>& operations) {
+    struct SegmentTree {
+        int size;
+        vector<long long> tree, lazy;
+
+        SegmentTree(const vector<int>& a) {
+            size = a.size();
+            tree.resize(4 * size);
+            lazy.resize(4 * size);
+            build(a, 1, 0, size - 1);
+        }
+        void build(const vector<int>& a, int node, int l, int r) {
+            if (l == r) {
+                tree[node] = a[l];
+                return;
+            }
+            int mid = (l + r) / 2;
+            build(a, node * 2, l, mid);
+            build(a, node * 2 + 1, mid + 1, r);
+            tree[node] = tree[node * 2] + tree[node * 2 + 1];
+        }
+        void push(int node, int l, int r) {
+            if (lazy[node]) {
+                tree[node] += (r - l + 1) * lazy[node];
+                if (l != r) {
+                    lazy[node * 2] += lazy[node];
+                    lazy[node * 2 + 1] += lazy[node];
+                }
+                lazy[node] = 0;
+            }
+        }
+        void range_add(int L, int R, int val) { range_add(1, 0, size - 1, L, R, val); }
+        void range_add(int node, int l, int r, int L, int R, int val) {
+            push(node, l, r);
+            if (r < L || l > R) return;
+            if (L <= l && r <= R) {
+                lazy[node] += val;
+                push(node, l, r);
+                return;
+            }
+            int mid = (l + r) / 2;
+            range_add(node * 2, l, mid, L, R, val);
+            range_add(node * 2 + 1, mid + 1, r, L, R, val);
+            tree[node] = tree[node * 2] + tree[node * 2 + 1];
+        }
+        long long range_sum(int L, int R) { return range_sum(1, 0, size - 1, L, R); }
+        long long range_sum(int node, int l, int r, int L, int R) {
+            push(node, l, r);
+            if (r < L || l > R) return 0;
+            if (L <= l && r <= R) return tree[node];
+            int mid = (l + r) / 2;
+            return range_sum(node * 2, l, mid, L, R) + range_sum(node * 2 + 1, mid + 1, r, L, R);
+        }
+    };
+
+    SegmentTree seg(initial_flows);
+    vector<int> answer;
+    for (const auto& op : operations) {
+        if (op[0] == 1) {
+            seg.range_add(op[1] - 1, op[2] - 1, op[3]);
+        } else {
+            long long val = seg.range_sum(op[1] - 1, op[2] - 1);
+            answer.push_back((int)val);
+        }
+    }
+    return answer;
+}
+
+
+int main() {
+    int n, q;
+    cin >> n >> q;
+
+    vector<int> initial_flows(n);
+    for (int i = 0; i < n; i++) {
+        cin >> initial_flows[i];
+    }
+
+    vector<vector<int>> operations(q);
+    for (int i = 0; i < q; i++) {
+        int op_type;
+        cin >> op_type;
+        operations[i].push_back(op_type);
+        if (op_type == 1) {
+            int l, r, v;
+            cin >> l >> r >> v;
+            operations[i].push_back(l);
+            operations[i].push_back(r);
+            operations[i].push_back(v);
+        } else if (op_type == 2) {
+            int l, r;
+            cin >> l >> r;
+            operations[i].push_back(l);
+            operations[i].push_back(r);
+        }
+    }
+
+    // Call the user logic function
+    vector<int> results = turbine_operations(n, q, initial_flows, operations);
+
+    // Print results for each type 2 operation
+    for (int result : results) {
+        cout << result << endl;
+    }
+
+    return 0;
+}
